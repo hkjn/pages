@@ -33,15 +33,15 @@ func SetLogger(l LoggerFunc) {
 	logger = l
 }
 
+// Renderer is a function to render a page result.
+type Renderer func(w http.ResponseWriter, r *http.Request) Result
+
 // A Page to be rendered.
 type Page struct {
 	URI    string             // URI path
 	Render Renderer           // func to render the page
 	tmpl   *template.Template // backing template
 }
-
-// Renderer is a function to render a page result.
-type Renderer func(w http.ResponseWriter, r *http.Request) Result
 
 // Add creates a new page.
 //
@@ -116,6 +116,9 @@ func (p Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// LoggerFunc returns a logger from a http request.
+type LoggerFunc func(*http.Request) Logger
+
 // Logger specifies logging functions.
 type Logger interface {
 	// Debugf formats its arguments according to the format, analogous to fmt.Printf,
@@ -134,6 +137,3 @@ type Logger interface {
 	// Criticalf is like Debugf, but at Critical level.
 	Criticalf(format string, args ...interface{})
 }
-
-// LoggerFunc returns a logger from a http request.
-type LoggerFunc func(*http.Request) Logger
