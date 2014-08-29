@@ -14,15 +14,18 @@
 package pages
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 
 	"log"
 )
 
 var (
 	logger              LoggerFunc
-	BaseTemplate        = "base" // name of top-level template to invoke for each page
+	BaseTemplate        = "base"         // Name of top-level template to invoke for each page.
+	BadRequestMsg       = "Bad request." // Message to display if ShowError is called.
 	StatusBadRequest    = Result{responseCode: http.StatusBadRequest}
 	StatusNotFound      = Result{responseCode: http.StatusNotFound}
 	StatusInternalError = Result{responseCode: http.StatusInternalServerError}
@@ -76,6 +79,23 @@ func BadRequestWith(err error) Result {
 		responseCode: http.StatusBadRequest,
 		err:          err,
 	}
+}
+
+// ShowError redirects to the index page with the "error" param set to
+// a static error message.
+//
+// Provided error is logged, but not displayed to the user.
+func ShowError(w http.ResponseWriter, r *http.Request, err error) {
+	if logger == nil {
+		log.Fatalf("no logger specified; call SetLogger\n")
+	}
+	l := logger(r)
+	q := url.Values{
+		"error": []string{BadRequestMsg},
+	}
+	nextUrl := fmt.Sprintf("/?%s", q.Encode())
+	l.Errorf("returning StatusBadRequest and redirecting to %q: %v\n", nextUrl, err)
+	http.Redirect(w, r, nextUrl, http.StatusBadRequest)
 }
 
 // ServeHTTP serves HTTP for the page.
