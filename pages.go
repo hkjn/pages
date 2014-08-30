@@ -98,6 +98,18 @@ func ShowError(w http.ResponseWriter, r *http.Request, err error) {
 	http.Redirect(w, r, nextUrl, http.StatusBadRequest)
 }
 
+// Values are simple URL params.
+type Values map[string]string
+
+// RedirectWith redirects to the index page with specified params.
+func RedirectWith(w http.ResponseWriter, r *http.Request, params Values) {
+	q := url.Values{}
+	for k, v := range params {
+		q[k] = []string{v}
+	}
+	http.Redirect(w, r, fmt.Sprintf("/?%s", q.Encode()), http.StatusFound)
+}
+
 // ServeHTTP serves HTTP for the page.
 //
 // ServeHTTP panics if no logger has been registered with SetLogger.
