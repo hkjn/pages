@@ -63,6 +63,7 @@ type Result struct {
 	data         interface{} // Data to render the page.
 	responseCode int         // HTTP response code.
 	err          error       // Error, or nil.
+	next         string      // Next uri, if applicable.
 }
 
 // StatusOK returns http.StatusOK with given data passed to the template.
@@ -78,6 +79,14 @@ func BadRequestWith(err error) Result {
 	return Result{
 		responseCode: http.StatusBadRequest,
 		err:          err,
+	}
+}
+
+// RedirectWith returns a Result indicating to redirect to another URI.
+func RedirectWith(uri string) Result {
+	return Result{
+		responseCode: http.StatusSeeOther,
+		next:         uri,
 	}
 }
 
@@ -101,13 +110,13 @@ func ShowError(w http.ResponseWriter, r *http.Request, err error) {
 // Values are simple URL params.
 type Values map[string]string
 
-// RedirectWith redirects to the index page with specified params.
-func RedirectWith(w http.ResponseWriter, r *http.Request, params Values) {
+// AddTo adds the Values to specified URI.
+func (v Values) AddTo(uri string) string {
 	q := url.Values{}
-	for k, v := range params {
+	for k, v := range v {
 		q[k] = []string{v}
 	}
-	http.Redirect(w, r, fmt.Sprintf("/?%s", q.Encode()), http.StatusFound)
+	return fmt.Sprintf("%s?%s", uri, q.Encode())
 }
 
 // ServeHTTP serves HTTP for the page.
@@ -130,6 +139,8 @@ func (p Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 		} else if pr.responseCode == http.StatusBadRequest {
 			http.Error(w, "Bad request", http.StatusBadRequest)
+		} else if pr.responseCode == http.StatusSeeOther {
+			http.Redirect(w, r, pr.next, http.StatusSeeOther)
 		} else {
 			http.Error(w, "Internal server error.", pr.responseCode)
 		}
