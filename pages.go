@@ -24,9 +24,10 @@ import (
 
 var (
 	logger              LoggerFunc
-	BaseTemplate        = "base"         // Name of top-level template to invoke for each page.
-	BadRequestMsg       = "Bad request." // Message to display if ShowError is called.
+	BaseTemplate        = "base"                                     // Name of top-level template to invoke for each page.
+	BadRequestMsg       = "Invalid request. Please try again later." // Message to display if ShowError is called.
 	StatusBadRequest    = Result{responseCode: http.StatusBadRequest}
+	StatusUnauthorized  = Result{responseCode: http.StatusUnauthorized}
 	StatusNotFound      = Result{responseCode: http.StatusNotFound}
 	StatusInternalError = Result{responseCode: http.StatusInternalServerError}
 )
@@ -82,6 +83,22 @@ func BadRequestWith(err error) Result {
 	}
 }
 
+// UnauthorizedWith returns a Result indicating an authorized request.
+func UnauthorizedWith(err error) Result {
+	return Result{
+		responseCode: http.StatusUnauthorized,
+		err:          err,
+	}
+}
+
+// InternalErrorWith returns a Result indicating an internal error.
+func InternalErrorWith(err error) Result {
+	return Result{
+		responseCode: http.StatusInternalServerError,
+		err:          err,
+	}
+}
+
 // RedirectWith returns a Result indicating to redirect to another URI.
 func RedirectWith(uri string) Result {
 	return Result{
@@ -100,11 +117,11 @@ func ShowError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	l := logger(r)
 	q := url.Values{
-		"error": []string{BadRequestMsg},
+		"error_msg": []string{BadRequestMsg},
 	}
 	nextUrl := fmt.Sprintf("/?%s", q.Encode())
 	l.Errorf("returning StatusBadRequest and redirecting to %q: %v\n", nextUrl, err)
-	http.Redirect(w, r, nextUrl, http.StatusBadRequest)
+	http.Redirect(w, r, nextUrl, http.StatusSeeOther)
 }
 
 // Values are simple URL params.
