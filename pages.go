@@ -1,16 +1,13 @@
 // Package pages provides some helpers for serving web pages.
 //
 // Example usage:
-//   var page = Add("/uri", handler, "tmpl/base.tmpl", "tmpl/page.tmpl")
+//   var myPage = pages.Add("/uri", myHandler, "tmpl/base.tmpl", "tmpl/page.tmpl")
 //
-//   func handler(w http.ResponseWriter, r *http.Request) pages.Result {
+//   func myHandler(w http.ResponseWriter, r *http.Request) pages.Result {
 //     return pages.OK("some data to page.tmpl")
 //   }
 //
-//   pages.SetLogger(func(r *http.Request) pages.Logger {
-//     return appengine.NewContext(r)
-//   })
-//   http.Handle(page.URI, page)
+//   http.Handle(myPage.URI, myPage)
 package pages
 
 import (
@@ -18,12 +15,9 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-
-	"log"
 )
 
 var (
-	logger              LoggerFunc
 	BaseTemplate        = "base"                                     // Name of top-level template to invoke for each page.
 	BadRequestMsg       = "Invalid request. Please try again later." // Message to display if ShowError is called.
 	StatusBadRequest    = Result{responseCode: http.StatusBadRequest}
@@ -31,11 +25,6 @@ var (
 	StatusNotFound      = Result{responseCode: http.StatusNotFound}
 	StatusInternalError = Result{responseCode: http.StatusInternalServerError}
 )
-
-// SetLogger registers a logger function.
-func SetLogger(l LoggerFunc) {
-	logger = l
-}
 
 // Renderer is a function to render a page result.
 type Renderer func(w http.ResponseWriter, r *http.Request) Result
@@ -112,9 +101,6 @@ func RedirectWith(uri string) Result {
 //
 // Provided error is logged, but not displayed to the user.
 func ShowError(w http.ResponseWriter, r *http.Request, err error) {
-	if logger == nil {
-		log.Fatalf("no logger specified; call SetLogger\n")
-	}
 	l := logger(r)
 	q := url.Values{
 		"error_msg": []string{BadRequestMsg},
@@ -145,9 +131,6 @@ func (v Values) AddTo(uri string) string {
 //
 // ServeHTTP panics if no logger has been registered with SetLogger.
 func (p Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if logger == nil {
-		log.Fatalf("no logger specified; call SetLogger\n")
-	}
 	l := logger(r)
 	l.Infof("Page %+v will ServeHTTP for URL: %v", p, r.URL)
 
@@ -179,26 +162,4 @@ func (p Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		l.Errorf("Failed to render template: %v", err)
 		http.Error(w, "Internal server error.", http.StatusInternalServerError)
 	}
-}
-
-// LoggerFunc returns a logger from a http request.
-type LoggerFunc func(*http.Request) Logger
-
-// Logger specifies logging functions.
-type Logger interface {
-	// Debugf formats its arguments according to the format, analogous to fmt.Printf,
-	// and records the text as a log message at Debug level.
-	Debugf(format string, args ...interface{})
-
-	// Infof is like Debugf, but at Info level.
-	Infof(format string, args ...interface{})
-
-	// Warningf is like Debugf, but at Warning level.
-	Warningf(format string, args ...interface{})
-
-	// Errorf is like Debugf, but at Error level.
-	Errorf(format string, args ...interface{})
-
-	// Criticalf is like Debugf, but at Critical level.
-	Criticalf(format string, args ...interface{})
 }
