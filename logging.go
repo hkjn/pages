@@ -1,4 +1,4 @@
-// Logging support for pages
+// Logging support for pages.
 //
 // The default logger uses github.com/golang/glog, which requires
 // that flags are initialized to override default behavior:
@@ -14,7 +14,6 @@
 //   pages.SetLogger(func(r *http.Request) pages.Logger {
 //     return appengine.NewContext(r)
 //   })
-
 package pages
 
 import (
