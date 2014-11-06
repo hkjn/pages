@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	BaseTemplate        = "base"                                     // Name of top-level template to invoke for each page.
-	BadRequestMsg       = "Invalid request. Please try again later." // Message to display if ShowError is called.
+	BaseTemplate        = "base"                                     // name of top-level template to invoke for each page
+	BadRequestMsg       = "Invalid request. Please try again later." // message to display if ShowError is called
+	ErrorParam          = "error_msg"                                // param to set in ShowError
 	StatusBadRequest    = Result{responseCode: http.StatusBadRequest}
 	StatusUnauthorized  = Result{responseCode: http.StatusUnauthorized}
 	StatusNotFound      = Result{responseCode: http.StatusNotFound}
@@ -50,10 +51,10 @@ func Add(uri string, render Renderer, tmpls ...string) Page {
 
 // Result is the result of rendering a page.
 type Result struct {
-	data         interface{} // Data to render the page.
-	responseCode int         // HTTP response code.
-	err          error       // Error, or nil.
-	next         string      // Next uri, if applicable.
+	data         interface{} // data to render the page
+	responseCode int         // HTTP response code
+	err          error       // error, if any
+	next         string      // next uri, if applicable
 }
 
 // StatusOK returns http.StatusOK with given data passed to the template.
@@ -72,7 +73,7 @@ func BadRequestWith(err error) Result {
 	}
 }
 
-// UnauthorizedWith returns a Result indicating an authorized request.
+// UnauthorizedWith returns a Result indicating an unauthorized request.
 func UnauthorizedWith(err error) Result {
 	return Result{
 		responseCode: http.StatusUnauthorized,
@@ -96,14 +97,14 @@ func RedirectWith(uri string) Result {
 	}
 }
 
-// ShowError redirects to the index page with the "error" param set to
-// a static error message.
+// ShowError redirects to the index page with the error param set to a
+// static error message.
 //
 // Provided error is logged, but not displayed to the user.
 func ShowError(w http.ResponseWriter, r *http.Request, err error) {
 	l := logger(r)
 	q := url.Values{
-		"error_msg": []string{BadRequestMsg},
+		ErrorParam: []string{BadRequestMsg},
 	}
 	nextUrl := fmt.Sprintf("/?%s", q.Encode())
 	l.Errorf("returning StatusBadRequest and redirecting to %q: %v\n", nextUrl, err)
@@ -113,7 +114,7 @@ func ShowError(w http.ResponseWriter, r *http.Request, err error) {
 // Values are simple URL params.
 type Values map[string]string
 
-// UrlValues returns the simplifies values as url.Values.
+// UrlValues returns the simplified values as url.Values.
 func (vs Values) UrlValues() url.Values {
 	q := url.Values{}
 	for k, v := range vs {
@@ -128,17 +129,15 @@ func (v Values) AddTo(uri string) string {
 }
 
 // ServeHTTP serves HTTP for the page.
-//
-// ServeHTTP panics if no logger has been registered with SetLogger.
 func (p Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := logger(r)
-	l.Infof("Page %+v will ServeHTTP for URL: %v", p, r.URL)
+	c := logger(r)
+	c.Infof("Page %+v will ServeHTTP for URL: %v", p, r.URL)
 
 	// Render the page, retrieving any data for the template.
 	pr := p.Render(w, r)
 	if pr.err != nil || pr.responseCode != http.StatusOK {
 		if pr.err != nil {
-			l.Errorf("Error while rendering %v: %v\n", r.URL, pr.err)
+			c.Errorf("Error while rendering %v: %v\n", r.URL, pr.err)
 		}
 		if pr.responseCode == http.StatusNotFound {
 			http.NotFound(w, r)
@@ -159,7 +158,7 @@ func (p Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// to be the only thing returned to viewing user.
 
 		// Error rendering the template is a programming bug.
-		l.Errorf("Failed to render template: %v", err)
+		c.Errorf("Failed to render template: %v", err)
 		http.Error(w, "Internal server error.", http.StatusInternalServerError)
 	}
 }
