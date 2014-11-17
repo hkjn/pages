@@ -8,7 +8,7 @@
 //   }
 //
 //   http.Handle(myPage.URI, myPage)
-package pages
+package pages // import "hkjn.me/pages"
 
 import (
 	"fmt"
